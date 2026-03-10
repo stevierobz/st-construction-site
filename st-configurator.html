@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Your Fabric Building | S&T Construction Group</title>
+<meta name="description" content="Design your custom fabric building online. Choose size, foundation, doors, vents and insulation — get an instant quote from S&T Construction Group.">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root {
+  --black: #0a0a0a;
+  --dark: #111;
+  --dark2: #161616;
+  --grey: #252525;
+  --mid: #555;
+  --light: #999;
+  --white: #f4f3ef;
+  --gold: #d4a843;
+  --gold2: #e8c060;
+  --red: #b83228;
+  --blue: #1a3a5c;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'Barlow', sans-serif; background: var(--black); color: var(--white); }
+
+/* LAYOUT */
+#app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+
+/* TOP BAR */
+.topbar {
+  background: rgba(10,10,10,0.97);
+  border-bottom: 1px solid rgba(212,168,67,0.15);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  z-index: 100;
+}
+.logo { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: 2px; }
+.logo em { color: var(--gold); font-style: normal; }
+.step-indicator { display: flex; gap: 6px; align-items: center; }
+.step-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--grey);
+  transition: background 0.3s;
+}
+.step-dot.done { background: var(--gold); }
+.step-dot.active { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+.step-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--light); margin-left: 8px; }
+.step-label span { color: var(--gold); font-weight: 700; }
+
+/* MAIN AREA */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* 3D CANVAS */
+#canvas-wrap {
+  flex: 1;
+  position: relative;
+  background: linear-gradient(160deg, #0d1117 0%, #0a0f1a 50%, #080a0e 100%);
+}
+#canvas-wrap canvas { display: block; width: 100% !important; height: 100% !important; }
+
+/* DIMENSION OVERLAY */
+.dim-overlay {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10,10,10,0.85);
+  border: 1px solid rgba(212,168,67,0.2);
+  padding: 10px 24px;
+  display: flex;
+  gap: 24px;
+  pointer-events: none;
+}
+.dim-item { text-align: center; }
+.dim-val { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700; color: var(--gold); }
+.dim-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--mid); margin-top: 1px; }
+
+.rotate-hint {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* PANEL */
+.panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: var(--dark2);
+  border-left: 1px solid var(--grey);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+  max-height: 100%;
+}
+
+.panel-inner {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--grey) transparent;
+}
+
+.panel-section { margin-bottom: 24px; }
+.panel-section-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--grey);
+}
+
+/* OPTIONS */
+.opt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.opt-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+.opt-grid.cols1 { grid-template-columns: 1fr; }
+
+.opt-btn {
+  padding: 10px 8px;
+  border: 1px solid var(--grey);
+  background: transparent;
+  color: var(--light);
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  text-align: center;
+  line-height: 1.3;
+  position: relative;
+}
+.opt-btn:hover { border-color: rgba(212,168,67,0.4); color: var(--white); }
+.opt-btn.selected {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--black);
+}
+.opt-btn .opt-sub { font-size: 10px; font-weight: 400; opacity: 0.7; display: block; margin-top: 2px; }
+.opt-btn.selected .opt-sub { opacity: 0.6; }
+
+/* SLIDER */
+.slider-wrap { padding: 4px 0; }
+.range-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.range-label { font-size: 12px; color: var(--light); width: 60px; }
+.range-val { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; color: var(--gold); width: 60px; text-align: right; }
+input[type=range] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 3px;
+  background: var(--grey);
+  border-radius: 2px;
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--gold);
+  cursor: pointer;
+  border: 2px solid var(--black);
+  box-shadow: 0 0 6px rgba(212,168,67,0.4);
+}
+
+/* SUMMARY BOX */
+.summary-box {
+  border: 1px solid var(--grey);
+  padding: 14px;
+  margin-bottom: 16px;
+  background: rgba(255,255,255,0.02);
+}
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.summary-row:last-child { border: none; }
+.summary-key { color: var(--light); }
+.summary-val { color: var(--white); font-weight: 600; }
+
+/* PRICE ESTIMATE */
+.price-box {
+  background: var(--gold);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.price-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: rgba(0,0,0,0.5); font-weight: 700; }
+.price-range { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; color: var(--black); line-height: 1; margin-top: 2px; }
+.price-note { font-size: 10px; color: rgba(0,0,0,0.5); margin-top: 3px; }
+
+/* NAV BUTTONS */
+.panel-nav {
+  padding: 16px 20px;
+  border-top: 1px solid var(--grey);
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+  min-height: 60px;
+  z-index: 20;
+  background: var(--dark2);
+  position: relative;
+}
+.btn-prev {
+  padding: 12px 20px;
+  border: 1px solid var(--grey);
+  background: transparent;
+  color: var(--light);
+  font-family: 'Barlow', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-prev:hover { border-color: var(--white); color: var(--white); }
+.btn-next {
+  flex: 1;
+  padding: 12px 20px;
+  background: var(--gold);
+  border: none;
+  color: var(--black);
+  font-family: 'Barlow', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-next:hover { background: var(--gold2); }
+.btn-next:disabled { background: var(--grey); color: var(--mid); cursor: not-allowed; }
+
+/* QUOTE FORM */
+.quote-form { padding: 20px; }
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--light); font-weight: 700; margin-bottom: 5px; display: block; }
+.form-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--grey);
+  color: var(--white);
+  font-family: 'Barlow', sans-serif;
+  font-size: 13px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.form-input:focus { border-color: var(--gold); }
+.form-input::placeholder { color: var(--mid); }
+textarea.form-input { resize: vertical; min-height: 80px; }
+select.form-input option { background: var(--dark2); }
+
+/* SUCCESS */
+.success-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px 20px;
+  text-align: center;
+}
+.success-icon { font-size: 48px; margin-bottom: 16px; }
+.success-title { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
+.success-sub { font-size: 13px; color: var(--light); line-height: 1.7; }
+
+/* STEP PAGES */
+.step-page { display: none; }
+.step-page.active { display: block; }
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .main { flex-direction: column; }
+  #canvas-wrap { height: 38vh; flex-shrink: 0; }
+  .panel { width: 100%; border-left: none; border-top: 1px solid var(--grey); flex: 1; min-height: 0; }
+  .opt-grid { grid-template-columns: 1fr 1fr; }
+  .topbar { height: 48px; }
+  .panel-nav { padding: 12px 16px; min-height: 60px; }
+  .btn-next { padding: 10px 16px; font-size: 10px; }
+  .btn-prev { padding: 10px 14px; font-size: 10px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="logo">S<em>&</em>T <span style="color:var(--white);font-weight:400;font-size:16px">Build Your Structure</span></div>
+    <div class="step-indicator">
+      <div class="step-dot active" id="dot-0"></div>
+      <div class="step-dot" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+      <div class="step-dot" id="dot-3"></div>
+      <div class="step-dot" id="dot-4"></div>
+      <div class="step-dot" id="dot-5"></div>
+      <div class="step-label" id="step-label"><span>01</span> / 06 &mdash; Size</div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- 3D CANVAS -->
+    <div id="canvas-wrap">
+      <canvas id="three-canvas"></canvas>
+      <div class="rotate-hint">
+        ↻ drag to rotate &nbsp;·&nbsp; scroll to zoom
+      </div>
+      <div style="position:absolute;top:14px;right:14px;display:flex;gap:6px;z-index:10;">
+        <button onclick="setView('front')" style="background:rgba(10,10,10,0.8);border:1px solid rgba(212,168,67,0.3);color:#d4a843;font-family:Barlow,sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:6px 10px;cursor:pointer;">FRONT</button>
+        <button onclick="setView('side')" style="background:rgba(10,10,10,0.8);border:1px solid rgba(212,168,67,0.3);color:#d4a843;font-family:Barlow,sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:6px 10px;cursor:pointer;">SIDE</button>
+        <button onclick="setView('top')" style="background:rgba(10,10,10,0.8);border:1px solid rgba(212,168,67,0.3);color:#d4a843;font-family:Barlow,sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:6px 10px;cursor:pointer;">TOP</button>
+        <button onclick="setView('iso')" style="background:rgba(10,10,10,0.8);border:1px solid rgba(212,168,67,0.3);color:#d4a843;font-family:Barlow,sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;padding:6px 10px;cursor:pointer;">ISO</button>
+      </div>
+      <div class="dim-overlay">
+        <div class="dim-item"><div class="dim-val" id="dim-w">40'</div><div class="dim-lbl">Width</div></div>
+        <div class="dim-item"><div class="dim-val" id="dim-l">60'</div><div class="dim-lbl">Length</div></div>
+        <div class="dim-item"><div class="dim-val" id="dim-h">22'</div><div class="dim-lbl">Height</div></div>
+      </div>
+    </div>
+
+    <!-- PANEL -->
+    <div class="panel">
+      <div class="panel-inner" id="panel-inner">
+
+        <!-- STEP 0: SIZE -->
+        <div class="step-page active" id="step-0">
+          <div class="panel-section">
+            <div class="panel-section-title">Width</div>
+            <div class="opt-grid cols3">
+              <button class="opt-btn" onclick="setOpt('width',30,this)">30'<span class="opt-sub">Small</span></button>
+              <button class="opt-btn selected" onclick="setOpt('width',40,this)">40'<span class="opt-sub">Popular</span></button>
+              <button class="opt-btn" onclick="setOpt('width',50,this)">50'<span class="opt-sub">—</span></button>
+              <button class="opt-btn" onclick="setOpt('width',60,this)">60'<span class="opt-sub">—</span></button>
+              <button class="opt-btn" onclick="setOpt('width',70,this)">70'<span class="opt-sub">—</span></button>
+              <button class="opt-btn" onclick="setOpt('width',80,this)">80'<span class="opt-sub">Large</span></button>
+            </div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-section-title">Length</div>
+            <div class="slider-wrap">
+              <div class="range-row">
+                <span class="range-label">Length</span>
+                <input type="range" min="40" max="200" step="10" value="60" oninput="setLength(this.value)">
+                <span class="range-val" id="len-val">60'</span>
+              </div>
+            </div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-section-title">End Walls</div>
+            <div class="opt-grid">
+              <button class="opt-btn selected" onclick="setOpt('endwalls','closed',this)">Closed Both<span class="opt-sub">Both ends enclosed</span></button>
+              <button class="opt-btn" onclick="setOpt('endwalls','open-front',this)">Open Front<span class="opt-sub">One open end</span></button>
+              <button class="opt-btn" onclick="setOpt('endwalls','open-both',this)">Open Both<span class="opt-sub">Drive-through</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 1: FOUNDATION -->
+        <div class="step-page" id="step-1">
+          <div class="panel-section">
+            <div class="panel-section-title">Foundation Type</div>
+            <div class="opt-grid cols1">
+              <button class="opt-btn selected" onclick="setOpt('foundation','block',this)">
+                Concrete Block Wall
+                <span class="opt-sub">Most common — stacked block perimeter, excellent for snow loads</span>
+              </button>
+              <button class="opt-btn" onclick="setOpt('foundation','seacan',this)">
+                Sea Can / Container Base
+                <span class="opt-sub">Shipping containers as foundation and side walls</span>
+              </button>
+              <button class="opt-btn" onclick="setOpt('foundation','slab',this)">
+                Concrete Slab Only
+                <span class="opt-sub">Fabric goes to ground, slab floor</span>
+              </button>
+              <button class="opt-btn" onclick="setOpt('foundation','gravel',this)">
+                Gravel Pad / No Foundation
+                <span class="opt-sub">Temporary or semi-permanent setup</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: DOORS -->
+        <div class="step-page" id="step-2">
+          <div class="panel-section">
+            <div class="panel-section-title">Roll-Up Overhead Door</div>
+            <div class="opt-grid cols3">
+              <button class="opt-btn selected" onclick="setOpt('rollup',1,this)">1 Door</button>
+              <button class="opt-btn" onclick="setOpt('rollup',2,this)">2 Doors</button>
+              <button class="opt-btn" onclick="setOpt('rollup',0,this)">None</button>
+            </div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-section-title">Bifold / Hydraulic Door</div>
+            <div class="opt-grid">
+              <button class="opt-btn selected" onclick="setOpt('bifold',0,this)">None</button>
+              <button class="opt-btn" onclick="setOpt('bifold',1,this)">1 Bifold<span class="opt-sub">Full-width opening</span></button>
+            </div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-section-title">Man Door</div>
+            <div class="opt-grid cols3">
+              <button class="opt-btn" onclick="setOpt('mandoor',0,this)">None</button>
+              <button class="opt-btn selected" onclick="setOpt('mandoor',1,this)">1 Door</button>
+              <button class="opt-btn" onclick="setOpt('mandoor',2,this)">2 Doors</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: VENTS -->
+        <div class="step-page" id="step-3">
+          <div class="panel-section">
+            <div class="panel-section-title">Ventilation</div>
+            <div class="opt-grid cols1">
+              <button class="opt-btn selected" onclick="setOpt('vents','none',this)">No Vents<span class="opt-sub">Storage only — no ventilation needed</span></button>
+              <button class="opt-btn" onclick="setOpt('vents','side-2',this)">2 Side Vents<span class="opt-sub">One per side, gravity ventilation</span></button>
+              <button class="opt-btn" onclick="setOpt('vents','side-4',this)">4 Side Vents<span class="opt-sub">Two per side — better airflow</span></button>
+              <button class="opt-btn" onclick="setOpt('vents','ridge',this)">Ridge Vent<span class="opt-sub">Continuous ridge ventilation along peak</span></button>
+              <button class="opt-btn" onclick="setOpt('vents','full',this)">Full Package<span class="opt-sub">Ridge + 4 side vents — maximum airflow</span></button>
+            </div>
+          </div>
+          <div class="panel-section">
+            <div class="panel-section-title">End Wall Fans &amp; Louvers</div>
+            <div class="opt-grid cols1">
+              <button class="opt-btn selected" onclick="setOpt('endwall_fan','none',this)">None<span class="opt-sub">No end wall ventilation</span></button>
+              <button class="opt-btn" onclick="setOpt('endwall_fan','louver-1',this)">1 Louver per End<span class="opt-sub">Gravity louver — passive airflow</span></button>
+              <button class="opt-btn" onclick="setOpt('endwall_fan','louver-2',this)">2 Louvers per End<span class="opt-sub">Dual gravity louvers — improved passive flow</span></button>
+              <button class="opt-btn" onclick="setOpt('endwall_fan','fan-1',this)">1 Power Fan per End<span class="opt-sub">Exhaust fan — forced ventilation</span></button>
+              <button class="opt-btn" onclick="setOpt('endwall_fan','fan-2',this)">2 Power Fans per End<span class="opt-sub">Dual exhaust fans — high-volume ventilation</span></button>
+              <button class="opt-btn" onclick="setOpt('endwall_fan','fan-louver',this)">Fan + Louver Combo<span class="opt-sub">Exhaust fan one end, intake louver other</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 4: INSULATION -->
+        <div class="step-page" id="step-4">
+          <div class="panel-section">
+            <div class="panel-section-title">Insulation</div>
+            <div class="opt-grid cols1">
+              <button class="opt-btn selected" onclick="setOpt('insulation','none',this)">No Insulation<span class="opt-sub">Cold storage, equipment shelter</span></button>
+              <button class="opt-btn" onclick="setOpt('insulation','rigid',this)">Rigid Board + Wood Strapping<span class="opt-sub">Polyiso panels screwed to wood frame — clean finish, high R-value</span></button>
+              <button class="opt-btn" onclick="setOpt('insulation','spray',this)">Closed-Cell Spray Foam<span class="opt-sub">Sprayed directly to membrane — R-6 per inch, vapour barrier</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 5: SUMMARY + QUOTE -->
+        <div class="step-page" id="step-5">
+          <div id="summary-content"></div>
+          <div id="price-content"></div>
+          <div class="quote-form" id="quote-form-wrap">
+            <div class="panel-section">
+              <div class="panel-section-title">Your Information</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input type="text" class="form-input" id="f-name" placeholder="John Smith">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company</label>
+              <input type="text" class="form-input" id="f-company" placeholder="Company Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email *</label>
+              <input type="email" class="form-input" id="f-email" placeholder="you@company.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="tel" class="form-input" id="f-phone" placeholder="(780) 555-0100">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Province</label>
+              <select class="form-input" id="f-province">
+                <option value="">Select Province</option>
+                <option>Alberta</option>
+                <option>British Columbia</option>
+                <option>Saskatchewan</option>
+                <option>Manitoba</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Additional Notes</label>
+              <textarea class="form-input" id="f-notes" placeholder="Site conditions, timeline, special requirements..."></textarea>
+            </div>
+          </div>
+          <div id="success-wrap" style="display:none"></div>
+        </div>
+
+      </div><!-- end panel-inner -->
+
+      <!-- NAV -->
+      <div class="panel-nav">
+        <button class="btn-prev" id="btn-prev" onclick="prevStep()" style="display:none">← Back</button>
+        <button class="btn-next" id="btn-next" onclick="nextStep()">Next: Foundation →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+var state = {
+  width: 40,
+  length: 60,
+  endwalls: 'closed',
+  foundation: 'block',
+  rollup: 1,
+  bifold: 0,
+  mandoor: 1,
+  vents: 'none',
+  endwall_fan: 'none',
+  insulation: 'none'
+};
+
+var currentStep = 0;
+var totalSteps = 6;
+
+var stepNames = ['Size', 'Foundation', 'Doors', 'Vents', 'Insulation', 'Quote'];
+var stepNextLabels = [
+  'Next: Foundation →',
+  'Next: Doors →',
+  'Next: Vents →',
+  'Next: Insulation →',
+  'Next: Review & Quote →',
+  'Submit Quote Request'
+];
+
+// ─── THREE.JS SETUP ──────────────────────────────────────────────────────────
+var canvas = document.getElementById('three-canvas');
+var wrap = document.getElementById('canvas-wrap');
+
+var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0f1a);
+scene.fog = new THREE.Fog(0x0a0f1a, 30, 80);
+
+var camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+// initial position set by updateCamera()
+
+// Lights
+var ambient = new THREE.AmbientLight(0xffffff, 0.4);
+scene.add(ambient);
+
+var sun = new THREE.DirectionalLight(0xfff5e0, 1.2);
+sun.position.set(15, 20, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far = 100;
+sun.shadow.camera.left = -30;
+sun.shadow.camera.right = 30;
+sun.shadow.camera.top = 30;
+sun.shadow.camera.bottom = -30;
+scene.add(sun);
+
+var fill = new THREE.DirectionalLight(0x8ab4d4, 0.4);
+fill.position.set(-10, 5, -5);
+scene.add(fill);
+
+var rimLight = new THREE.DirectionalLight(0xd4a843, 0.3);
+rimLight.position.set(0, 10, -15);
+scene.add(rimLight);
+
+// Ground plane
+var groundGeo = new THREE.PlaneGeometry(100, 100);
+var groundMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+var ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Grid
+var grid = new THREE.GridHelper(60, 30, 0x252525, 0x1a1a1a);
+grid.position.y = 0.01;
+scene.add(grid);
+
+// Building group
+var building = new THREE.Group();
+scene.add(building);
+
+// Materials
+var fabricMat = new THREE.MeshPhongMaterial({
+  color: 0xf0ede6,
+  specular: 0x222222,
+  shininess: 15,
+  side: THREE.FrontSide
+});
+
+var fabricInsideMat = new THREE.MeshPhongMaterial({
+  color: 0xd8d4cc,
+  specular: 0x111111,
+  shininess: 5,
+  side: THREE.BackSide
+});
+
+var blockMat = new THREE.MeshPhongMaterial({
+  color: 0x8a8a7a,
+  specular: 0x111111,
+  shininess: 5
+});
+
+var seacanMat = new THREE.MeshPhongMaterial({
+  color: 0x4a5a4a,
+  specular: 0x222222,
+  shininess: 20
+});
+
+var doorMat = new THREE.MeshPhongMaterial({
+  color: 0xc8c8c8,
+  specular: 0x444444,
+  shininess: 40
+});
+
+var doorFrameMat = new THREE.MeshPhongMaterial({
+  color: 0x555555,
+  specular: 0x222222,
+  shininess: 10
+});
+
+var ventMat = new THREE.MeshPhongMaterial({
+  color: 0x888888,
+  specular: 0x333333,
+  shininess: 30
+});
+
+var ridgeMat = new THREE.MeshPhongMaterial({
+  color: 0x999990,
+  specular: 0x222222,
+  shininess: 10
+});
+
+var insulationMat = new THREE.MeshPhongMaterial({
+  color: 0xe8e0d0,
+  specular: 0x111111,
+  shininess: 3
+});
+
+// ─── BUILD 3D MODEL ──────────────────────────────────────────────────────────
+function buildModel() {
+  // Clear scene
+  while (building.children.length) building.remove(building.children[0]);
+
+  var W  = state.width  / 10;   // 1 unit = 10 ft
+  var L  = state.length / 10;
+  var R  = W / 2;               // arch radius = half width
+  var SEGS = 64;                // smooth
+
+  // Foundation height
+  var SEA_H = 0.867; // 8'8" = real container height
+  var fH = { block:0.22, seacan:SEA_H, slab:0.04, gravel:0 }[state.foundation] || 0;
+
+  // ── helpers ──────────────────────────────────────────────────────────────
+  function add(geo, mat, px, py, pz, rx, ry, rz) {
+    var m = new THREE.Mesh(geo, mat);
+    m.position.set(px||0, py||0, pz||0);
+    if (rx) m.rotation.x = rx;
+    if (ry) m.rotation.y = ry;
+    if (rz) m.rotation.z = rz;
+    m.castShadow = true;
+    m.receiveShadow = true;
+    building.add(m);
+    return m;
+  }
+
+  // ── FABRIC ARCH ──────────────────────────────────────────────────────────
+  // Build arch from a BufferGeometry quad strip — one row of quads wrapping
+  // the top half circle, extruded along Z. This is the most reliable method.
+  // Each quad: two arch-profile points × two Z positions
+
+  var outerR = R;
+  var innerR = R - 0.035;
+
+  function makeArchGeo(radius, len) {
+    var positions = [];
+    var normals   = [];
+    var uvs       = [];
+    var indices   = [];
+
+    // Arch curve points (PI to 0 = left ground up and over to right ground)
+    // y offset = fH so arch sits on foundation
+    // PLUS vertical leg extensions down to y=0 on each side
+
+    // Left leg: x = -radius, from y=0 down to y=fH (straight down)
+    // Then arch curve from left (angle=PI) to right (angle=0)
+    // Right leg: x = +radius, from y=fH down to y=0
+
+    // Total profile: left-leg-bottom → left-leg-top → arch → right-leg-top → right-leg-bottom
+    // We build as a single quad strip
+
+    var profile = []; // array of {x, y, nx, ny}
+
+    // Left vertical leg (bottom to top)
+    if (fH > 0) {
+      profile.push({ x: -radius, y: 0,   nx: -1, ny: 0 });
+      profile.push({ x: -radius, y: fH,  nx: -1, ny: 0 });
+    }
+
+    // Arch curve
+    for (var i = 0; i <= SEGS; i++) {
+      var angle = Math.PI - (Math.PI * i / SEGS);
+      var x  = radius * Math.cos(angle);
+      var y  = radius * Math.sin(angle) + fH;
+      var nx = Math.cos(angle);
+      var ny = Math.sin(angle);
+      profile.push({ x: x, y: y, nx: nx, ny: ny });
+    }
+
+    // Right vertical leg (top to bottom)
+    if (fH > 0) {
+      profile.push({ x: radius, y: fH, nx: 1, ny: 0 });
+      profile.push({ x: radius, y: 0,  nx: 1, ny: 0 });
+    }
+
+    // Build quad strip along Z
+    for (var pi3 = 0; pi3 < profile.length; pi3++) {
+      var p = profile[pi3];
+      var u = pi3 / (profile.length - 1);
+      positions.push(p.x, p.y,  len/2);
+      normals.push(p.nx, p.ny, 0);
+      uvs.push(u, 1);
+      positions.push(p.x, p.y, -len/2);
+      normals.push(p.nx, p.ny, 0);
+      uvs.push(u, 0);
+    }
+
+    for (var s = 0; s < profile.length - 1; s++) {
+      var a = s*2, b = s*2+1, c = s*2+2, d = s*2+3;
+      indices.push(a, b, c,  b, d, c);
+    }
+
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+    geo.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(normals),   3));
+    geo.setAttribute('uv',       new THREE.BufferAttribute(new Float32Array(uvs),       2));
+    geo.setIndex(indices);
+    return geo;
+  }
+
+  // Outer fabric skin
+  var fabricSkin = new THREE.MeshPhongMaterial({
+    color: 0xf0ede5,
+    specular: 0x222222,
+    shininess: 20,
+    side: THREE.FrontSide
+  });
+  add(makeArchGeo(outerR, L), fabricSkin);
+
+  // Inner liner
+  var innerColor = state.insulation !== 'none' ? 0xddd9ce : 0xe8e4dc;
+  var innerSkin = new THREE.MeshPhongMaterial({
+    color: innerColor,
+    specular: 0x111111,
+    shininess: 4,
+    side: THREE.BackSide
+  });
+  add(makeArchGeo(innerR, L), innerSkin);
+
+  // ── STEEL TRUSSES ─────────────────────────────────────────────────────────
+  var trussCount   = Math.max(2, Math.round(state.length / 10) - 1);
+  var trussSpacing = L / (trussCount + 1);
+  var trussR       = R - 0.07;
+  var trussSegs    = 24;
+  var trussMat  = new THREE.MeshPhongMaterial({color:0x7a8a8a, specular:0x444444, shininess:50});
+  var purlinMat = new THREE.MeshPhongMaterial({color:0x6a7a7a, specular:0x333333, shininess:35});
+
+  for (var ti = 0; ti <= trussCount + 1; ti++) {
+    var tz = -L/2 + trussSpacing * ti;
+    // Only draw full trusses at spacing intervals (not every unit)
+    if (ti === 0 || ti === trussCount + 1) continue;
+
+    // Arch ring segments
+    for (var ts = 0; ts < trussSegs; ts++) {
+      var a1 = Math.PI - (Math.PI * ts / trussSegs);
+      var a2 = Math.PI - (Math.PI * (ts+1) / trussSegs);
+      var x1 = trussR * Math.cos(a1), y1 = trussR * Math.sin(a1) + fH;
+      var x2 = trussR * Math.cos(a2), y2 = trussR * Math.sin(a2) + fH;
+      var mx = (x1+x2)/2, my = (y1+y2)/2;
+      var sLen = Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
+      var ang  = Math.atan2(y2-y1, x2-x1);
+      var tg = new THREE.BoxGeometry(sLen+0.002, 0.035, 0.035);
+      var tm = new THREE.Mesh(tg, trussMat);
+      tm.position.set(mx, my, tz);
+      tm.rotation.z = ang;
+      building.add(tm);
+    }
+
+    // Vertical legs to foundation
+    if (fH > 0) {
+      add(new THREE.BoxGeometry(0.04, fH, 0.04), trussMat, -R+0.05, fH/2, tz);
+      add(new THREE.BoxGeometry(0.04, fH, 0.04), trussMat,  R-0.05, fH/2, tz);
+    }
+  }
+
+  // Purlins — 8 runs along building length
+  var purlinCount = 8;
+  for (var pi2 = 1; pi2 <= purlinCount; pi2++) {
+    var pa    = Math.PI - (Math.PI * pi2 / (purlinCount+1));
+    var px2   = trussR * Math.cos(pa);
+    var py2   = trussR * Math.sin(pa) + fH;
+    add(new THREE.BoxGeometry(0.025, 0.025, L - 0.05), purlinMat, px2, py2, 0);
+  }
+
+  // ── FOUNDATION ────────────────────────────────────────────────────────────
+  var blockMat2  = new THREE.MeshPhongMaterial({color:0x8a8a7a, specular:0x111111, shininess:4});
+  var seacanMat2 = new THREE.MeshPhongMaterial({color:0x4a5a46, specular:0x222222, shininess:15});
+
+  if (state.foundation === 'block') {
+    // Side walls
+    add(new THREE.BoxGeometry(0.15, fH, L), blockMat2, -R+0.075, fH/2, 0);
+    add(new THREE.BoxGeometry(0.15, fH, L), blockMat2,  R-0.075, fH/2, 0);
+    // Front and back end walls (full width)
+    add(new THREE.BoxGeometry(W, fH, 0.15), blockMat2, 0, fH/2,  L/2);
+    add(new THREE.BoxGeometry(W, fH, 0.15), blockMat2, 0, fH/2, -L/2);
+    var lm = new THREE.MeshLambertMaterial({color:0x666660});
+    // Side block lines
+    for (var row = 1; row <= 3; row++) {
+      add(new THREE.BoxGeometry(0.16, 0.006, L), lm, -R+0.075, row*(fH/4), 0);
+      add(new THREE.BoxGeometry(0.16, 0.006, L), lm,  R-0.075, row*(fH/4), 0);
+    }
+    // Front and back block lines
+    for (var row2 = 1; row2 <= 3; row2++) {
+      add(new THREE.BoxGeometry(W, 0.006, 0.16), lm, 0, row2*(fH/4),  L/2);
+      add(new THREE.BoxGeometry(W, 0.006, 0.16), lm, 0, row2*(fH/4), -L/2);
+    }
+  }
+  if (state.foundation === 'seacan') {
+    // Standard 40ft containers: 8'6" wide x 8'8" tall x 40' long
+    // Placed along each side wall. Stack/repeat to fill building length.
+    var canLen   = 2.0;   // 20ft = 2.0 units
+    var canThick = 0.425; // 8'6" wide = 0.85 units, half = 0.425 each side
+    var canCount = Math.ceil(L / canLen);
+    var totalCanLen = canCount * canLen;
+    var canStartZ = -totalCanLen / 2;
+
+    var corrugMat = new THREE.MeshLambertMaterial({color:0x3a4838});
+    var cornerMat = new THREE.MeshPhongMaterial({color:0x2a3828, specular:0x222222, shininess:20});
+
+    for (var ci = 0; ci < canCount; ci++) {
+      var cz = canStartZ + ci * canLen + canLen/2;
+      // Container centre sits AT ±R (arch footprint edge)
+      // canThick = 0.425 = half of 8'6" width, so container spans R±0.425
+      var cxL = -R;
+      var cxR =  R;
+      // Left side container body
+      add(new THREE.BoxGeometry(canThick*2, fH, canLen - 0.02), seacanMat2, cxL, fH/2, cz);
+      // Right side container body
+      add(new THREE.BoxGeometry(canThick*2, fH, canLen - 0.02), seacanMat2, cxR, fH/2, cz);
+
+      // Corrugation ribs
+      var ribCount = Math.floor(canLen / 0.22);
+      for (var ri = 0; ri <= ribCount; ri++) {
+        var rz = canStartZ + ci*canLen + ri*(canLen/ribCount);
+        add(new THREE.BoxGeometry(canThick*2+0.01, fH, 0.012), corrugMat, cxL, fH/2, rz);
+        add(new THREE.BoxGeometry(canThick*2+0.01, fH, 0.012), corrugMat, cxR, fH/2, rz);
+      }
+
+      // Corner posts and rails
+      var postZ1 = canStartZ + ci*canLen;
+      var postZ2 = canStartZ + (ci+1)*canLen;
+      [cxL, cxR].forEach(function(cx) {
+        add(new THREE.BoxGeometry(canThick*2+0.02, fH, 0.06), cornerMat, cx, fH/2, postZ1);
+        add(new THREE.BoxGeometry(canThick*2+0.02, fH, 0.06), cornerMat, cx, fH/2, postZ2);
+        // Top rail
+        add(new THREE.BoxGeometry(canThick*2+0.01, 0.05, canLen), cornerMat, cx, fH - 0.025, (postZ1+postZ2)/2);
+        // Bottom rail
+        add(new THREE.BoxGeometry(canThick*2+0.01, 0.05, canLen), cornerMat, cx, 0.025, (postZ1+postZ2)/2);
+      });
+    }
+  }
+  if (state.foundation === 'slab') {
+    add(new THREE.BoxGeometry(W+0.2, fH, L+0.2),
+      new THREE.MeshPhongMaterial({color:0x909088}), 0, fH/2, 0);
+  }
+
+  // ── END WALLS ─────────────────────────────────────────────────────────────
+  function makeEndWall(zPos, withDoors, rollupCount, mandoorCount) {
+    if (rollupCount === undefined) rollupCount = state.rollup;
+    if (mandoorCount === undefined) mandoorCount = state.mandoor;
+    // Smooth arch end wall via BufferGeometry triangle fan
+    var ewSegs = 64;
+    var pos = [], idx2 = [];
+
+    // Centre-bottom point at ground level (index 0)
+    pos.push(0, 0, zPos);
+
+    // Arc from left ground → top → right ground
+    for (var ei = 0; ei <= ewSegs; ei++) {
+      var ea = Math.PI - (Math.PI * ei / ewSegs);
+      pos.push(R * Math.cos(ea), R * Math.sin(ea) + fH, zPos);
+    }
+
+    // Triangle fan
+    for (var ef = 0; ef < ewSegs; ef++) {
+      idx2.push(0, ef+1, ef+2);
+    }
+    // Close flat base triangle
+    idx2.push(0, ewSegs+1, 1);
+
+    var ewGeo = new THREE.BufferGeometry();
+    ewGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+    ewGeo.setIndex(idx2);
+    ewGeo.computeVertexNormals();
+
+    var ewMat = new THREE.MeshPhongMaterial({
+      color: 0xf0ede5,
+      side: THREE.DoubleSide,
+      specular: 0x111111,
+      shininess: 8
+    });
+    var ewMesh = new THREE.Mesh(ewGeo, ewMat);
+    ewMesh.castShadow = true;
+    building.add(ewMesh);
+
+    if (!withDoors) return;
+
+    // Doors — roll-up fixed at 14'x14' (1.4 x 1.4 units)
+    var dH  = 1.4;
+    var dW  = 1.4;
+    var dSp = dW * 1.5;
+    var doorPanelMat  = new THREE.MeshPhongMaterial({color:0xc8c8c8, specular:0x444444, shininess:40});
+    var doorFrameMat2 = new THREE.MeshPhongMaterial({color:0x444444, specular:0x222222, shininess:15});
+
+    // man door fixed 3'x7' = 0.3 x 0.7 units
+    var mdW = 0.3;
+    var mdH = 0.7;
+
+    if (state.bifold === 1) {
+      var bfw = R * 1.2;
+      add(new THREE.BoxGeometry(bfw,      R*0.8,      0.02),  doorPanelMat,  0, R*0.4, zPos);
+      add(new THREE.BoxGeometry(bfw+0.05, R*0.8+0.05, 0.025), doorFrameMat2, 0, R*0.4, zPos-0.013);
+      add(new THREE.BoxGeometry(0.02, R*0.8, 0.026), doorFrameMat2, 0, R*0.4, zPos);
+    } else if (rollupCount > 0) {
+      // Centre single door, offset if 2 doors (but 2 doors splits front/back so max 1 here)
+      var sx = -dW/2;
+      var dx = sx + dW/2;
+      add(new THREE.BoxGeometry(dW,      dH,      0.02),  doorPanelMat,  dx, dH/2, zPos);
+      add(new THREE.BoxGeometry(dW+0.05, dH+0.05, 0.025), doorFrameMat2, dx, dH/2, zPos-0.013);
+      var slatMat = new THREE.MeshLambertMaterial({color:0xaaaaaa});
+      for (var sl = 0; sl < 8; sl++) {
+        add(new THREE.BoxGeometry(dW-0.02, 0.012, 0.026), slatMat, dx, (sl+0.5)*(dH/8), zPos);
+      }
+    }
+
+    // ── END WALL FANS & LOUVERS ──────────────────────────────────────────
+    var fanType = state.endwall_fan;
+    if (fanType !== 'none') {
+      var isBack = (zPos < 0);
+      var showFan    = fanType === 'fan-1' || fanType === 'fan-2' || (!isBack && fanType === 'fan-louver');
+      var showLouver = fanType === 'louver-1' || fanType === 'louver-2' || (isBack && fanType === 'fan-louver');
+      var count = (fanType === 'fan-2' || fanType === 'louver-2') ? 2 : 1;
+
+      var fvMat  = new THREE.MeshPhongMaterial({color:0x777777, specular:0x333333, shininess:30});
+      var bladeMat = new THREE.MeshPhongMaterial({color:0xaaaaaa, specular:0x444444, shininess:50});
+      var louverBodyMat = new THREE.MeshPhongMaterial({color:0x888888, specular:0x222222, shininess:15});
+
+      // Position: upper arch area, centred or side-by-side
+      var fvSize = 0.35; // ~3.5ft diameter
+      var fvY = fH + R * 0.72;
+      var fvXList = count === 1 ? [0] : [-R*0.38, R*0.38];
+      var fvZ = zPos + (zPos > 0 ? -0.04 : 0.04);
+      var fvNorm = zPos > 0 ? -1 : 1; // face outward
+
+      fvXList.forEach(function(fvX) {
+        if (showFan) {
+          // Fan housing (circular approximated as octagon box)
+          add(new THREE.BoxGeometry(fvSize+0.06, fvSize+0.06, 0.08), fvMat, fvX, fvY, fvZ);
+          // Fan blades — 4 crossed rectangles
+          for (var bl = 0; bl < 4; bl++) {
+            var bAngle = bl * Math.PI / 4;
+            var bx = Math.cos(bAngle) * fvSize*0.22;
+            var by = Math.sin(bAngle) * fvSize*0.22;
+            var bmesh = new THREE.Mesh(
+              new THREE.BoxGeometry(fvSize*0.42, fvSize*0.1, 0.018),
+              bladeMat
+            );
+            bmesh.position.set(fvX + bx, fvY + by, fvZ + 0.02*fvNorm);
+            bmesh.rotation.z = bAngle;
+            building.add(bmesh);
+          }
+          // Hub
+          add(new THREE.BoxGeometry(0.06, 0.06, 0.05), fvMat, fvX, fvY, fvZ + 0.04*fvNorm);
+        }
+
+        if (showLouver) {
+          // Louver housing
+          add(new THREE.BoxGeometry(fvSize+0.06, fvSize*0.7+0.06, 0.06), louverBodyMat, fvX, fvY, fvZ);
+          // Louver blades — horizontal slats
+          var slats = 5;
+          for (var lv2 = 0; lv2 < slats; lv2++) {
+            var ly = fvY - fvSize*0.3 + lv2 * (fvSize*0.6/(slats-1));
+            add(new THREE.BoxGeometry(fvSize, 0.018, 0.09),
+              new THREE.MeshLambertMaterial({color:0x999999}),
+              fvX, ly, fvZ + 0.02*fvNorm, 0.35, 0, 0);
+          }
+        }
+      });
+    }
+
+    // Man door — 3'x7', positioned just beside the roll-up door
+    if (mandoorCount > 0) {
+      // Place right beside roll-up door (or centred if no roll-up)
+      var moX = rollupCount > 0
+        ? dW/2 + mdW/2 + 0.08   // snug right of roll-up
+        : 0;                     // centred if no roll-up
+      add(new THREE.BoxGeometry(mdW,      mdH,      0.022),
+        new THREE.MeshLambertMaterial({color:0x888888}), moX, mdH/2, zPos);
+      add(new THREE.BoxGeometry(mdW+0.04, mdH+0.04, 0.026), doorFrameMat2, moX, mdH/2, zPos-0.013);
+      // Door handle
+      add(new THREE.BoxGeometry(0.015, 0.12, 0.03),
+        new THREE.MeshPhongMaterial({color:0xcccccc, shininess:80}), moX - mdW/2 + 0.05, mdH/2, zPos-0.016);
+    }
+  }
+
+  // Place end walls — when 2 doors selected, split front/back
+  var frontRollup  = state.rollup  === 2 ? 1 : state.rollup;
+  var backRollup   = state.rollup  === 2 ? 1 : 0;
+  var frontMandoor = state.mandoor === 2 ? 1 : state.mandoor;
+  var backMandoor  = state.mandoor === 2 ? 1 : 0;
+
+  if (state.endwalls === 'closed') {
+    makeEndWall( L/2, true,  frontRollup, frontMandoor);
+    makeEndWall(-L/2, false, backRollup,  backMandoor);
+  } else if (state.endwalls === 'open-front') {
+    makeEndWall(-L/2, false, backRollup, backMandoor);
+  }
+  // open-both = no end walls (tunnel)
+
+  // ── VENTS ─────────────────────────────────────────────────────────────────
+  var ventZList = [];
+  if (state.vents === 'side-2')              ventZList = [0];
+  if (state.vents === 'side-4' || state.vents === 'full') ventZList = [L*0.28, -L*0.28];
+
+  var ventBodyMat  = new THREE.MeshPhongMaterial({color:0x999999, specular:0x333333, shininess:25});
+  var ventLouvMat  = new THREE.MeshLambertMaterial({color:0x666666});
+
+  ventZList.forEach(function(vz) {
+    [-1,1].forEach(function(side) {
+      var va = Math.PI - Math.PI * 0.65;
+      var vx = side * R * Math.cos(va) * 0.96;
+      var vy = R * Math.sin(va) + fH - 0.04;
+      add(new THREE.BoxGeometry(0.22, 0.1, 0.32), ventBodyMat, vx, vy, vz, 0, 0, side*-0.4);
+      for (var lv=0; lv<3; lv++) {
+        add(new THREE.BoxGeometry(0.23, 0.012, 0.30), ventLouvMat, vx, vy-0.03+lv*0.03, vz, 0.28, 0, side*-0.4);
+      }
+    });
+  });
+
+  if (state.vents === 'ridge' || state.vents === 'full') {
+    add(new THREE.BoxGeometry(0.24, 0.15, L*0.75),
+      new THREE.MeshPhongMaterial({color:0x909090, specular:0x222222, shininess:10}),
+      0, R + fH + 0.075, 0);
+  }
+
+  // ── INSULATION PANEL LINES ─────────────────────────────────────────────────
+  if (state.insulation === 'rigid') {
+    var panMat = new THREE.MeshLambertMaterial({color:0xc8c4bc});
+    for (var pli = 1; pli <= 5; pli++) {
+      var pla = Math.PI - (Math.PI * pli / 6);
+      var plx = (R-0.04) * Math.cos(pla);
+      var ply = (R-0.04) * Math.sin(pla) + fH;
+      add(new THREE.BoxGeometry(0.02, 0.02, L*0.97), panMat, plx, ply, 0);
+    }
+  }
+
+  // ── DIMENSIONS ────────────────────────────────────────────────────────────
+  document.getElementById('dim-w').textContent = state.width  + "'";
+  document.getElementById('dim-l').textContent = state.length + "'";
+  document.getElementById('dim-h').textContent = Math.round(R * 10) + "'";
+
+  // Adjust camera distance to building size
+  var maxD = Math.max(W, L);
+  spherical.radius = Math.max(spherical.radius, maxD * 1.9);
+  updateCamera();
+}
+
+// ─── ORBIT CONTROLS (manual) ─────────────────────────────────────────────────
+var isDragging = false;
+var prevMouse = { x: 0, y: 0 };
+var spherical = { theta: 0.0, phi: 1.48, radius: 22 };
+var target = new THREE.Vector3(0, 0.8, 0);
+
+function updateCamera() {
+  var x = spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+  var y = spherical.radius * Math.cos(spherical.phi);
+  var z = spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+  camera.position.set(x + target.x, y + target.y, z + target.z);
+  camera.lookAt(target);
+}
+
+canvas.addEventListener('mousedown', function(e) {
+  isDragging = true;
+  prevMouse.x = e.clientX;
+  prevMouse.y = e.clientY;
+});
+
+window.addEventListener('mouseup', function() { isDragging = false; });
+
+window.addEventListener('mousemove', function(e) {
+  if (!isDragging) return;
+  var dx = e.clientX - prevMouse.x;
+  var dy = e.clientY - prevMouse.y;
+  spherical.theta -= dx * 0.004;
+  spherical.phi = Math.max(0.05, Math.min(1.52, spherical.phi + dy * 0.005));
+  prevMouse.x = e.clientX;
+  prevMouse.y = e.clientY;
+  updateCamera();
+});
+
+canvas.addEventListener('wheel', function(e) {
+  spherical.radius = Math.max(6, Math.min(60, spherical.radius + e.deltaY * 0.04));
+  updateCamera();
+  e.preventDefault();
+}, { passive: false });
+
+// Touch
+var prevTouch = null;
+canvas.addEventListener('touchstart', function(e) {
+  isDragging = true;
+  prevTouch = e.touches[0];
+}, { passive: true });
+canvas.addEventListener('touchend', function() { isDragging = false; prevTouch = null; }, { passive: true });
+canvas.addEventListener('touchmove', function(e) {
+  if (!isDragging || !prevTouch) return;
+  var dx = e.touches[0].clientX - prevTouch.clientX;
+  var dy = e.touches[0].clientY - prevTouch.clientY;
+  spherical.theta -= dx * 0.005;
+  spherical.phi = Math.max(0.05, Math.min(1.52, spherical.phi + dy * 0.007));
+  prevTouch = e.touches[0];
+  updateCamera();
+}, { passive: true });
+
+// ─── RESIZE ───────────────────────────────────────────────────────────────────
+function resize() {
+  var w = wrap.clientWidth;
+  var h = wrap.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── ANIMATE ──────────────────────────────────────────────────────────────────
+function setView(v) {
+  autoRotate = false;
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(function() { autoRotate = true; }, 6000);
+  if (v === 'front') { spherical.theta = 0; spherical.phi = 1.45; spherical.radius = 22; }
+  if (v === 'side')  { spherical.theta = Math.PI / 2; spherical.phi = 0.3; spherical.radius = 26; }
+  if (v === 'top')   { spherical.theta = 0.2; spherical.phi = 0.12; spherical.radius = 30; }
+  if (v === 'iso')   { spherical.theta = 0.55; spherical.phi = 0.28; spherical.radius = 28; }
+  updateCamera();
+}
+
+var autoRotate = true;
+var autoRotateSpeed = 0.0008;
+var idleTimer = null;
+
+function resetIdle() {
+  autoRotate = false;
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(function() { autoRotate = true; }, 4000);
+}
+
+canvas.addEventListener('mousedown', resetIdle);
+canvas.addEventListener('touchstart', resetIdle, {passive:true});
+canvas.addEventListener('wheel', resetIdle, {passive:true});
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (autoRotate) {
+    spherical.theta += autoRotateSpeed;
+    updateCamera();
+  }
+  renderer.render(scene, camera);
+}
+animate();
+updateCamera();
+
+// ─── STEP LOGIC ───────────────────────────────────────────────────────────────
+function setOpt(key, val, btn) {
+  state[key] = val;
+  // Walk up to find opt-grid parent
+  var el = btn.parentElement;
+  while (el && !el.classList.contains('opt-grid')) { el = el.parentElement; }
+  if (el) {
+    el.querySelectorAll('.opt-btn').forEach(function(b) { b.classList.remove('selected'); });
+  }
+  btn.classList.add('selected');
+  buildModel();
+}
+
+function setLength(val) {
+  state.length = parseInt(val);
+  document.getElementById('len-val').textContent = val + "'";
+  buildModel();
+}
+
+function goToStep(n) {
+  document.getElementById('step-' + currentStep).classList.remove('active');
+  currentStep = n;
+  document.getElementById('step-' + currentStep).classList.add('active');
+
+  // Update dots
+  for (var i = 0; i < totalSteps; i++) {
+    var dot = document.getElementById('dot-' + i);
+    if (i < currentStep) { dot.className = 'step-dot done'; }
+    else if (i === currentStep) { dot.className = 'step-dot active'; }
+    else { dot.className = 'step-dot'; }
+  }
+
+  // Step label
+  var sn = currentStep + 1;
+  document.getElementById('step-label').innerHTML = '<span>' + (sn < 10 ? '0' + sn : sn) + '</span> / ' + totalSteps + ' — ' + stepNames[currentStep];
+
+  // Nav buttons
+  document.getElementById('btn-prev').style.display = currentStep === 0 ? 'none' : 'block';
+  document.getElementById('btn-next').textContent = stepNextLabels[currentStep];
+
+  // Populate summary on last step
+  if (currentStep === 5) buildSummary();
+
+  // Scroll panel to top
+  document.getElementById('panel-inner').scrollTop = 0;
+}
+
+function nextStep() {
+  if (currentStep < 5) {
+    goToStep(currentStep + 1);
+  } else {
+    submitQuote();
+  }
+}
+
+function prevStep() {
+  if (currentStep > 0) goToStep(currentStep - 1);
+}
+
+// ─── PRICE ESTIMATE ───────────────────────────────────────────────────────────
+function calcPrice() {
+  var area = state.width * state.length;
+  var base = area * 12; // ~$12/sqft base
+
+  var foundMult = { 'gravel': 1.0, 'slab': 1.1, 'block': 1.25, 'seacan': 1.35 };
+  base *= (foundMult[state.foundation] || 1.0);
+
+  var doorAdd = (state.rollup * 3500) + (state.bifold * 12000) + (state.mandoor * 1200);
+  base += doorAdd;
+
+  var ventAdd = { 'none': 0, 'side-2': 800, 'side-4': 1600, 'ridge': 3000, 'full': 4500 };
+  base += (ventAdd[state.vents] || 0);
+
+  var insMult = { 'none': 1.0, 'rigid': 1.35, 'spray': 1.45 };
+  base *= (insMult[state.insulation] || 1.0);
+
+  var lo = Math.round(base * 0.85 / 5000) * 5000;
+  var hi = Math.round(base * 1.2 / 5000) * 5000;
+
+  return { lo: lo, hi: hi };
+}
+
+function fmtMoney(n) {
+  return '$' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function buildSummary() {
+  var foundLabels = { 'block': 'Concrete Block Wall', 'seacan': 'Sea Can / Container Base', 'slab': 'Concrete Slab', 'gravel': 'Gravel Pad' };
+  var fanLabels = { 'none': 'No End Wall Fans', 'louver-1': '1 Louver/End', 'louver-2': '2 Louvers/End', 'fan-1': '1 Power Fan/End', 'fan-2': '2 Power Fans/End', 'fan-louver': 'Fan + Louver Combo' };
+  var ventLabels = { 'none': 'None', 'side-2': '2 Side Vents', 'side-4': '4 Side Vents', 'ridge': 'Ridge Vent', 'full': 'Full Vent Package' };
+  var insLabels = { 'none': 'None', 'rigid': 'Rigid Board + Wood Strapping', 'spray': 'Closed-Cell Spray Foam' };
+  var ewLabels = { 'closed': 'Closed Both Ends', 'open-front': 'Open Front', 'open-both': 'Open Both Ends (Drive-Through)' };
+  var doorStr = [];
+  if (state.rollup > 0) doorStr.push(state.rollup + ' Roll-Up Door' + (state.rollup > 1 ? 's' : ''));
+  if (state.bifold > 0) doorStr.push('1 Bifold Door');
+  if (state.mandoor > 0) doorStr.push(state.mandoor + ' Man Door' + (state.mandoor > 1 ? 's' : ''));
+  if (doorStr.length === 0) doorStr.push('None');
+
+  var p = calcPrice();
+
+  var summaryRows = [
+    ['Size', state.width + "' Wide × " + state.length + "' Long"],
+    ['End Walls', ewLabels[state.endwalls]],
+    ['Foundation', foundLabels[state.foundation]],
+    ['Doors', doorStr.join(', ')],
+    ['Vents', ventLabels[state.vents] + ' | ' + fanLabels[state.endwall_fan]],
+    ['Insulation', insLabels[state.insulation]],
+    ['Floor Area', (state.width * state.length).toLocaleString() + ' sq ft']
+  ];
+
+  var summaryHTML = '<div class="summary-box">';
+  summaryRows.forEach(function(r) {
+    summaryHTML += '<div class="summary-row"><span class="summary-key">' + r[0] + '</span><span class="summary-val">' + r[1] + '</span></div>';
+  });
+  summaryHTML += '</div>';
+
+  document.getElementById('summary-content').innerHTML = summaryHTML;
+
+  document.getElementById('price-content').innerHTML = '';
+
+  // Pre-fill notes
+  var auto = state.width + "' × " + state.length + "' fabric building — " +
+    foundLabels[state.foundation] + ' foundation, ' +
+    doorStr.join(', ') + ', ' +
+    ventLabels[state.vents] + ' | ' + fanLabels[state.endwall_fan] + ' vents, ' +
+    insLabels[state.insulation] + ' insulation.';
+  document.getElementById('f-notes').placeholder = auto;
+}
+
+// ─── SUBMIT ───────────────────────────────────────────────────────────────────
+function submitQuote() {
+  var name = document.getElementById('f-name').value.trim();
+  var email = document.getElementById('f-email').value.trim();
+
+  if (!name || !email) {
+    document.getElementById('f-name').style.borderColor = !name ? 'var(--red)' : 'var(--grey)';
+    document.getElementById('f-email').style.borderColor = !email ? 'var(--red)' : 'var(--grey)';
+    document.getElementById('panel-inner').scrollTop = 999;
+    return;
+  }
+
+  var foundLabels = { 'block': 'Concrete Block Wall', 'seacan': 'Sea Can / Container Base', 'slab': 'Concrete Slab', 'gravel': 'Gravel Pad' };
+  var ventLabels = { 'none': 'None', 'side-2': '2 Side Vents', 'side-4': '4 Side Vents', 'ridge': 'Ridge Vent', 'full': 'Full Vent Package' };
+  var insLabels = { 'none': 'None', 'rigid': 'Rigid Board + Wood Strapping', 'spray': 'Closed-Cell Spray Foam' };
+  var fanLabels = { 'none': 'No End Wall Fans', 'louver-1': '1 Louver/End', 'louver-2': '2 Louvers/End', 'fan-1': '1 Power Fan/End', 'fan-2': '2 Power Fans/End', 'fan-louver': 'Fan + Louver Combo' };
+  var p = calcPrice();
+
+  var btn = document.getElementById('btn-next');
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
+
+  var payload = {
+    name: name,
+    email: email,
+    company: document.getElementById('f-company').value || '',
+    phone: document.getElementById('f-phone').value || '',
+    province: document.getElementById('f-province').value || '',
+    size: state.width + "' Wide x " + state.length + "' Long",
+    foundation: foundLabels[state.foundation],
+    end_walls: state.endwalls,
+    rollup_doors: state.rollup,
+    bifold_door: state.bifold ? 'Yes' : 'No',
+    man_doors: state.mandoor,
+    vents: ventLabels[state.vents],
+    end_wall_fans: fanLabels[state.endwall_fan] || 'None',
+    insulation: insLabels[state.insulation],
+    floor_area: (state.width * state.length) + ' sq ft',
+    budget_estimate: fmtMoney(p.lo) + ' - ' + fmtMoney(p.hi),
+    notes: document.getElementById('f-notes').value || 'None',
+    _subject: "Fabric Building Quote Request - " + state.width + "' x " + state.length + "' - " + name
+  };
+
+  fetch('https://formspree.io/f/xjgaglbr', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      document.getElementById('quote-form-wrap').style.display = 'none';
+      document.getElementById('success-wrap').style.display = 'block';
+      document.getElementById('btn-next').style.display = 'none';
+      document.getElementById('btn-prev').style.display = 'none';
+      document.getElementById('success-wrap').innerHTML =
+        '<div class="success-wrap">' +
+        '<div class="success-icon">✓</div>' +
+        '<div class="success-title">Quote Sent!</div>' +
+        "<div class='success-sub'>Your configuration has been sent to S&amp;T Construction Group.<br><br>We'll be in touch within 1 business day.<br><br><strong style='color:var(--gold)'>(250) 864-8689</strong><br>Info@stconstructiongroup.com</div>" +
+        '</div>';
+    } else {
+      btn.textContent = 'Submit Quote Request';
+      btn.disabled = false;
+      alert('Something went wrong. Please call us at (250) 864-8689 or email Info@stconstructiongroup.com');
+    }
+  })
+  .catch(function() {
+    btn.textContent = 'Submit Quote Request';
+    btn.disabled = false;
+    alert('Something went wrong. Please call us at (250) 864-8689 or email Info@stconstructiongroup.com');
+  });
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+buildModel();
+updateCamera();
+</script>
+</body>
+</html>
